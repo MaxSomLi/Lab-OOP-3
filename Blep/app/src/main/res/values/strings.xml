@@ -1,4 +1,8 @@
 <resources>
     <string name="app_name">Blep</string>
     <string name="type">us</string>
+    <string name="listening">Listening…</string>
+    <string name="cam">camera</string>
+    <string name="time">time</string>
+    <string name="write">note</string>
 </resources>

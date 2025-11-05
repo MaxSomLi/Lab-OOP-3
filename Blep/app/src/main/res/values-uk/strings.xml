@@ -2,4 +2,8 @@
 <resources>
     <string name="app_name">Блеп</string>
     <string name="type">uk</string>
+    <string name="listening">Слухаю…</string>
+    <string name="cam">камера</string>
+    <string name="time">час</string>
+    <string name="write">пиши</string>
 </resources>

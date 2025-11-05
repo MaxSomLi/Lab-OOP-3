@@ -35,9 +35,9 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
     private Recognizer recognizer;
     private Model model;
     private SpeechService speechService;
-    private final int SR = 16000, NOTIF_ID = 1;
+    private final int SR = 16000, NOTIF_ID = 1, BT = 1024, MP = -1;
     private String MD = "model/";
-    private static final String LISTENING = "Listening...", TIME = "time", CAM = "camera", CHANNEL_ID = "voice_channel", DASH = "/";
+    private static final String CHANNEL_ID = "voice_channel", DASH = "/", FORM = "HH:mm", T = "text", TP = "text/plain";
 
     @Override
     public void onCreate() {
@@ -47,7 +47,7 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
         NotificationManager nm = getSystemService(NotificationManager.class);
         if (nm != null) {
             nm.createNotificationChannel(channel);
-            Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID).setContentTitle(getString(R.string.app_name)).setContentText(LISTENING).setSmallIcon(R.drawable.notif).setPriority(NotificationCompat.PRIORITY_HIGH).setDefaults(Notification.DEFAULT_VIBRATE).setOngoing(true).build();
+            Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID).setContentTitle(getString(R.string.app_name)).setContentText(getString(R.string.listening)).setSmallIcon(R.drawable.notif).setPriority(NotificationCompat.PRIORITY_HIGH).setDefaults(Notification.DEFAULT_VIBRATE).setOngoing(true).build();
             startForeground(NOTIF_ID, notification);
         }
         tts = new TextToSpeech(this, this);
@@ -95,11 +95,10 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
     }
 
     private void copyAssetFile(AssetManager assetManager, String fromAssetPath, String toPath) throws IOException {
-        try (InputStream in = assetManager.open(fromAssetPath);
-             OutputStream out = new FileOutputStream(toPath)) {
-            byte[] buffer = new byte[1024];
+        try (InputStream in = assetManager.open(fromAssetPath); OutputStream out = new FileOutputStream(toPath)) {
+            byte[] buffer = new byte[BT];
             int read;
-            while ((read = in.read(buffer)) != -1) {
+            while ((read = in.read(buffer)) != MP) {
                 out.write(buffer, 0, read);
             }
         }
@@ -112,7 +111,7 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
             speechService = new SpeechService(recognizer, SR);
             speechService.startListening(this);
         } catch (IOException e) {
-            return;
+            onDestroy();
         }
     }
 
@@ -160,29 +159,26 @@ public class VoiceService extends Service implements RecognitionListener, TextTo
     private void handleCommand(String hypothesis) {
         try {
             JSONObject json = new JSONObject(hypothesis);
-            String text = json.optString("text", "").toLowerCase(Locale.ROOT);
-            if (text.contains(TIME)) {
-                tts.speak(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")), TextToSpeech.QUEUE_FLUSH, null);
-            } else if (text.contains(CAM)) {
+            String text = json.optString(T, "").toLowerCase(Locale.ROOT);
+            if (text.contains(getString(R.string.time))) {
+                tts.speak(LocalTime.now().format(DateTimeFormatter.ofPattern(FORM)), TextToSpeech.QUEUE_FLUSH, null);
+            } else if (text.contains(getString(R.string.cam))) {
                 Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(intent);
+            } else if (text.contains(getString(R.string.write))) {
+                Intent intent = new Intent(Intent.ACTION_SEND);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                intent.setType(TP);
+                intent.putExtra(Intent.EXTRA_TEXT, text);
+                startActivity(intent);
             }
         } catch (JSONException e) {
-            return;
+            e.printStackTrace();
         }
     }
 
     @Override
-    public void onInit(int status) {
-        if (status == TextToSpeech.SUCCESS) {
-            int result = tts.setLanguage(Locale.US);
-            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                return;
-            }
-        } else {
-            return;
-        }
-    }
+    public void onInit(int status) {}
 
 }
